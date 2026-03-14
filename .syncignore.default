@@ -1,0 +1,8 @@
+# .syncignore — 동기화에서 제외할 파일/폴더 목록
+# .gitignore와 동일한 문법 사용
+# 프로젝트 루트에 .syncignore로 복사하여 사용
+
+.env
+.env.local
+.env.development
+.env.production

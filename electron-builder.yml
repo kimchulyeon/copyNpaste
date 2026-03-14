@@ -1,0 +1,10 @@
+appId: com.sisync.app
+productName: SI Sync
+directories:
+  output: release
+mac:
+  target: dmg
+win:
+  target: nsis
+files:
+  - out/**
