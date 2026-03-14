@@ -1,3 +1,4 @@
+import { memo, useCallback, useMemo } from 'react'
 import type { DiffFile } from '../types'
 import StatusBadge from './StatusBadge'
 
@@ -10,7 +11,70 @@ interface FileListProps {
   onSelectFile: (path: string) => void
 }
 
-export default function FileList({
+// Individual file row — only re-renders when its own props change
+const FileRow = memo(function FileRow({
+  file,
+  isChecked,
+  isActive,
+  onToggleCheck,
+  onSelectFile,
+}: {
+  file: DiffFile
+  isChecked: boolean
+  isActive: boolean
+  onToggleCheck: (path: string) => void
+  onSelectFile: (path: string) => void
+}) {
+  const fileName = file.path.includes('/')
+    ? file.path.substring(file.path.lastIndexOf('/') + 1)
+    : file.path
+
+  return (
+    <div
+      onClick={() => onSelectFile(file.path)}
+      className={`px-3.5 py-2.5 border-b border-[#21262d] cursor-pointer transition-all duration-100 ${
+        isActive
+          ? 'bg-[#161b22] border-l-2 border-l-[#58a6ff]'
+          : 'border-l-2 border-l-transparent hover:bg-[#161b2288]'
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={isChecked}
+          onChange={(e) => {
+            e.stopPropagation()
+            onToggleCheck(file.path)
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className="accent-[#238636] shrink-0"
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            {file.isDanger && (
+              <span
+                title="인프라/배포 파일 — 덮어쓰기 주의!"
+                className="text-[#e8b931] text-sm cursor-help"
+              >
+                ⚠
+              </span>
+            )}
+            <span
+              className={`text-[13px] truncate ${
+                file.isDanger ? 'text-[#e8b931]' : 'text-[#e6edf3]'
+              }`}
+            >
+              {fileName}
+            </span>
+          </div>
+        </div>
+        <StatusBadge status={file.status} />
+      </div>
+    </div>
+  )
+})
+
+export default memo(function FileList({
   files,
   checkedFiles,
   selectedFile,
@@ -18,13 +82,19 @@ export default function FileList({
   onToggleAll,
   onSelectFile,
 }: FileListProps) {
-  // Group files by directory
-  const grouped = files.reduce<Record<string, DiffFile[]>>((acc, file) => {
-    const dir = file.path.includes('/') ? file.path.substring(0, file.path.lastIndexOf('/') + 1) : ''
-    if (!acc[dir]) acc[dir] = []
-    acc[dir].push(file)
-    return acc
-  }, {})
+  // Group files by directory — memoize so it doesn't recompute on checkbox changes
+  const grouped = useMemo(
+    () =>
+      files.reduce<Record<string, DiffFile[]>>((acc, file) => {
+        const dir = file.path.includes('/')
+          ? file.path.substring(0, file.path.lastIndexOf('/') + 1)
+          : ''
+        if (!acc[dir]) acc[dir] = []
+        acc[dir].push(file)
+        return acc
+      }, {}),
+    [files]
+  )
 
   return (
     <div className="flex-1 overflow-auto">
@@ -52,59 +122,18 @@ export default function FileList({
               {dir}
             </div>
           )}
-          {dirFiles.map((file) => {
-            const isActive = selectedFile === file.path
-            const fileName = file.path.includes('/')
-              ? file.path.substring(file.path.lastIndexOf('/') + 1)
-              : file.path
-
-            return (
-              <div
-                key={file.path}
-                onClick={() => onSelectFile(file.path)}
-                className={`px-3.5 py-2.5 border-b border-[#21262d] cursor-pointer transition-all duration-100 ${
-                  isActive
-                    ? 'bg-[#161b22] border-l-2 border-l-[#58a6ff]'
-                    : 'border-l-2 border-l-transparent hover:bg-[#161b2288]'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={checkedFiles.has(file.path)}
-                    onChange={(e) => {
-                      e.stopPropagation()
-                      onToggleCheck(file.path)
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="accent-[#238636] shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      {file.isDanger && (
-                        <span
-                          title="인프라/배포 파일 — 덮어쓰기 주의!"
-                          className="text-[#e8b931] text-sm cursor-help"
-                        >
-                          ⚠
-                        </span>
-                      )}
-                      <span
-                        className={`text-[13px] truncate ${
-                          file.isDanger ? 'text-[#e8b931]' : 'text-[#e6edf3]'
-                        }`}
-                      >
-                        {fileName}
-                      </span>
-                    </div>
-                  </div>
-                  <StatusBadge status={file.status} />
-                </div>
-              </div>
-            )
-          })}
+          {dirFiles.map((file) => (
+            <FileRow
+              key={file.path}
+              file={file}
+              isChecked={checkedFiles.has(file.path)}
+              isActive={selectedFile === file.path}
+              onToggleCheck={onToggleCheck}
+              onSelectFile={onSelectFile}
+            />
+          ))}
         </div>
       ))}
     </div>
   )
-}
+})

@@ -18,7 +18,16 @@ interface ElectronAPI {
   // 브랜치 관리
   getBranches: (repoPath: string) => Promise<{ current: string; branches: string[] }>
   checkoutBranch: (repoPath: string, branch: string) => Promise<boolean>
-  gitPull: (repoPath: string) => Promise<{ success: boolean; summary: string }>
+  gitPull: (repoPath: string, branch?: string) => Promise<{ success: boolean; summary: string }>
+
+  // 경고 패턴 관리
+  getWarnPatterns: () => Promise<{ patterns: string[]; defaults: string[] }>
+  setWarnPatterns: (patterns: string[]) => Promise<void>
+  removeWarnPattern: (pattern: string) => Promise<boolean>
+  resetWarnPatterns: () => Promise<{ patterns: string[]; defaults: string[] }>
+
+  // 확인 다이얼로그
+  showConfirm: (title: string, message: string, detail?: string) => Promise<boolean>
 
   // 파일 diff
   getFileDiff: (sourcePath: string, destPath: string, filePath: string) => Promise<FileDiffResult>

@@ -18,7 +18,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 브랜치 관리
   getBranches: (repoPath: string) => ipcRenderer.invoke('get-branches', repoPath),
   checkoutBranch: (repoPath: string, branch: string) => ipcRenderer.invoke('checkout-branch', repoPath, branch),
-  gitPull: (repoPath: string) => ipcRenderer.invoke('git-pull', repoPath),
+  gitPull: (repoPath: string, branch?: string) => ipcRenderer.invoke('git-pull', repoPath, branch),
+
+  // 경고 패턴 관리
+  getWarnPatterns: () => ipcRenderer.invoke('get-warn-patterns'),
+  setWarnPatterns: (patterns: string[]) => ipcRenderer.invoke('set-warn-patterns', patterns),
+  removeWarnPattern: (pattern: string) => ipcRenderer.invoke('remove-warn-pattern', pattern),
+  resetWarnPatterns: () => ipcRenderer.invoke('reset-warn-patterns'),
+
+  // 확인 다이얼로그
+  showConfirm: (title: string, message: string, detail?: string) =>
+    ipcRenderer.invoke('show-confirm', title, message, detail),
 
   // 파일 diff
   getFileDiff: (sourcePath: string, destPath: string, filePath: string) =>

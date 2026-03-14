@@ -14,22 +14,9 @@ interface DiffFile {
 
 const DEFAULT_EXCLUDES = ['node_modules', '.git', 'dist', 'build', '.DS_Store', '.next', '__pycache__']
 
-const DANGER_PATTERNS = [
-  'Dockerfile',
-  'docker-compose.yml',
-  'docker-compose.',
-  '.github/workflows/',
-  'deploy.yml',
-  'deploy.',
-  'k8s/',
-  '.env',
-  'Jenkinsfile',
-  'nginx.conf',
-]
-
-function isDangerFile(filePath: string): boolean {
+function isDangerFile(filePath: string, dangerPatterns: string[]): boolean {
   const normalized = filePath.replace(/\\/g, '/')
-  return DANGER_PATTERNS.some((p) => {
+  return dangerPatterns.some((p) => {
     if (p.endsWith('/')) {
       return normalized.includes(p)
     }
@@ -97,7 +84,7 @@ function walkDir(dir: string, base: string, excludes: string[], customIgnores: s
   return results
 }
 
-export async function scanDiff(sourcePath: string, destPath: string): Promise<DiffFile[]> {
+export async function scanDiff(sourcePath: string, destPath: string, dangerPatterns: string[]): Promise<DiffFile[]> {
   const customIgnores = [
     ...loadSyncIgnore(sourcePath),
     ...loadSyncIgnore(destPath),
@@ -127,7 +114,7 @@ export async function scanDiff(sourcePath: string, destPath: string): Promise<Di
           destSize: dstStat.size,
           sourceModified: srcStat.mtime.toISOString(),
           destModified: dstStat.mtime.toISOString(),
-          isDanger: isDangerFile(file),
+          isDanger: isDangerFile(file, dangerPatterns),
         })
       }
     } else if (inSource && !inDest) {
@@ -139,7 +126,7 @@ export async function scanDiff(sourcePath: string, destPath: string): Promise<Di
         destSize: null,
         sourceModified: srcStat.mtime.toISOString(),
         destModified: null,
-        isDanger: isDangerFile(file),
+        isDanger: isDangerFile(file, dangerPatterns),
       })
     } else if (!inSource && inDest) {
       const dstStat = fs.statSync(dstFull)
@@ -150,7 +137,7 @@ export async function scanDiff(sourcePath: string, destPath: string): Promise<Di
         destSize: dstStat.size,
         sourceModified: '',
         destModified: dstStat.mtime.toISOString(),
-        isDanger: isDangerFile(file),
+        isDanger: isDangerFile(file, dangerPatterns),
       })
     }
   }

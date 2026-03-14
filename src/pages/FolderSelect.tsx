@@ -88,7 +88,7 @@ export default function FolderSelect({
     if (!sourcePath || !sourceExists) return
     setPulling(true)
     setPullResult(null)
-    const result = await window.electronAPI.gitPull(sourcePath)
+    const result = await window.electronAPI.gitPull(sourcePath, sourceBranch || undefined)
     setPullResult(result)
     setPulling(false)
     setTimeout(() => setPullResult(null), 4000)

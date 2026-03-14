@@ -1,3 +1,5 @@
+import { memo } from 'react'
+
 interface StatusBadgeProps {
   status: 'modified' | 'new' | 'deleted'
 }
@@ -8,7 +10,7 @@ const statusStyles = {
   deleted: 'bg-[#2e1a1a] text-[#e84040] border-[#5c2a2a]',
 }
 
-export default function StatusBadge({ status }: StatusBadgeProps) {
+export default memo(function StatusBadge({ status }: StatusBadgeProps) {
   return (
     <span
       className={`text-[11px] px-2 py-0.5 rounded border font-semibold uppercase tracking-wider ${statusStyles[status]}`}
@@ -16,4 +18,4 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
       {status}
     </span>
   )
-}
+})

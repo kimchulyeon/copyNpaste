@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
-import type { DiffFile, GitLogEntry, SyncResult } from '../types'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import type { DiffFile, GitLogEntry, SyncResult, FileDiffResult } from '../types'
 import FileList from '../components/FileList'
 import FileDetail from '../components/FileDetail'
 
@@ -18,8 +18,14 @@ export default function DiffView({ sourcePath, destPath, files, sourceBranch, de
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [gitLog, setGitLog] = useState<GitLogEntry[]>([])
   const [gitLogLoading, setGitLogLoading] = useState(false)
+  const [fileDiff, setFileDiff] = useState<FileDiffResult | null>(null)
+  const [fileDiffLoading, setFileDiffLoading] = useState(false)
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
   const [syncing, setSyncing] = useState(false)
+
+  // Cache for git logs and file diffs
+  const gitLogCache = useRef<Record<string, GitLogEntry[]>>({})
+  const diffCache = useRef<Record<string, FileDiffResult>>({})
 
   const activeFile = files.find((f) => f.path === selectedFile) || null
 
@@ -27,11 +33,17 @@ export default function DiffView({ sourcePath, destPath, files, sourceBranch, de
     files.find((f) => f.path === path)?.isDanger
   )
 
+  // Fetch git log with caching
   const fetchGitLog = useCallback(
     async (filePath: string) => {
+      if (gitLogCache.current[filePath]) {
+        setGitLog(gitLogCache.current[filePath])
+        return
+      }
       setGitLogLoading(true)
       try {
         const log = await window.electronAPI.getGitLog(sourcePath, filePath)
+        gitLogCache.current[filePath] = log
         setGitLog(log)
       } catch {
         setGitLog([])
@@ -41,28 +53,52 @@ export default function DiffView({ sourcePath, destPath, files, sourceBranch, de
     [sourcePath]
   )
 
+  // Fetch file diff with caching
+  const fetchFileDiff = useCallback(
+    async (filePath: string) => {
+      if (diffCache.current[filePath]) {
+        setFileDiff(diffCache.current[filePath])
+        return
+      }
+      setFileDiffLoading(true)
+      try {
+        const diff = await window.electronAPI.getFileDiff(sourcePath, destPath, filePath)
+        diffCache.current[filePath] = diff
+        setFileDiff(diff)
+      } catch {
+        setFileDiff(null)
+      }
+      setFileDiffLoading(false)
+    },
+    [sourcePath, destPath]
+  )
+
   useEffect(() => {
     if (selectedFile) {
       fetchGitLog(selectedFile)
+      fetchFileDiff(selectedFile)
     }
-  }, [selectedFile, fetchGitLog])
+  }, [selectedFile, fetchGitLog, fetchFileDiff])
 
-  const toggleCheck = (path: string) => {
+  const toggleCheck = useCallback((path: string) => {
     setCheckedFiles((prev) => {
       const next = new Set(prev)
       if (next.has(path)) next.delete(path)
       else next.add(path)
       return next
     })
-  }
+  }, [])
 
-  const toggleAll = () => {
-    if (checkedFiles.size === files.length) {
-      setCheckedFiles(new Set())
-    } else {
-      setCheckedFiles(new Set(files.map((f) => f.path)))
-    }
-  }
+  const toggleAll = useCallback(() => {
+    setCheckedFiles((prev) => {
+      if (prev.size === files.length) return new Set()
+      return new Set(files.map((f) => f.path))
+    })
+  }, [files])
+
+  const selectFile = useCallback((path: string) => {
+    setSelectedFile(path)
+  }, [])
 
   const handleSync = async () => {
     if (checkedFiles.size === 0) return
@@ -72,8 +108,12 @@ export default function DiffView({ sourcePath, destPath, files, sourceBranch, de
     )
 
     if (dangerSelected.length > 0) {
-      const msg = `⚠ 인프라/배포 파일이 포함되어 있습니다:\n\n${dangerSelected.join('\n')}\n\n정말 덮어쓰시겠습니까?`
-      if (!confirm(msg)) return
+      const confirmed = await window.electronAPI.showConfirm(
+        '주의 파일 포함',
+        `⚠ 인프라/배포 파일 ${dangerSelected.length}개가 포함되어 있습니다.\n정말 덮어쓰시겠습니까?`,
+        dangerSelected.join('\n')
+      )
+      if (!confirmed) return
     }
 
     setSyncing(true)
@@ -105,8 +145,6 @@ export default function DiffView({ sourcePath, destPath, files, sourceBranch, de
 
   // 동기화 완료 결과 화면
   if (syncResult) {
-    const hasFailed = syncResult.failedFiles.length > 0
-
     return (
       <div className="flex items-center justify-center h-[calc(100vh-45px)]">
         <div className="max-w-[480px] w-full px-8">
@@ -132,7 +170,7 @@ export default function DiffView({ sourcePath, destPath, files, sourceBranch, de
             </h2>
             <p className="text-[#8b949e] text-sm">
               {syncResult.success
-                ? `${syncResult.syncedFiles.length}개 파일이 목적지에 복사되었습니다`
+                ? `${syncResult.syncedFiles.length}개 파일이 목적지에 반영되었습니다`
                 : `${syncResult.failedFiles.length}개 파일에서 오류가 발생했습니다`}
             </p>
           </div>
@@ -223,7 +261,7 @@ export default function DiffView({ sourcePath, destPath, files, sourceBranch, de
           selectedFile={selectedFile}
           onToggleCheck={toggleCheck}
           onToggleAll={toggleAll}
-          onSelectFile={setSelectedFile}
+          onSelectFile={selectFile}
         />
 
         {/* Sync Button */}
@@ -258,6 +296,8 @@ export default function DiffView({ sourcePath, destPath, files, sourceBranch, de
             file={activeFile}
             gitLog={gitLog}
             gitLogLoading={gitLogLoading}
+            fileDiff={fileDiff}
+            fileDiffLoading={fileDiffLoading}
             sourcePath={sourcePath}
             destPath={destPath}
           />

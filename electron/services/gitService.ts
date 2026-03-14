@@ -52,11 +52,13 @@ export async function checkoutBranch(repoPath: string, branch: string): Promise<
   }
 }
 
-export async function gitPull(repoPath: string): Promise<{ success: boolean; summary: string }> {
+export async function gitPull(repoPath: string, branch?: string): Promise<{ success: boolean; summary: string }> {
   const git = simpleGit(repoPath)
 
   try {
-    const result = await git.pull()
+    // 현재 브랜치 확인
+    const currentBranch = branch || (await git.branchLocal()).current
+    const result = await git.pull('origin', currentBranch)
     if (result.summary.changes === 0 && result.summary.insertions === 0 && result.summary.deletions === 0) {
       return { success: true, summary: '이미 최신 상태입니다.' }
     }

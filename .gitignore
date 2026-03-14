@@ -7,3 +7,7 @@ release/
 *.tsbuildinfo
 *.dmg
 *.exe
+
+/docs
+CLAUDE.md
+.claude

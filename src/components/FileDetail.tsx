@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import type { DiffFile, GitLogEntry } from '../types'
+import { useState, memo } from 'react'
+import type { DiffFile, GitLogEntry, FileDiffResult } from '../types'
 import StatusBadge from './StatusBadge'
 import GitTimeline from './GitTimeline'
 import DiffViewer from './DiffViewer'
@@ -8,6 +8,8 @@ interface FileDetailProps {
   file: DiffFile
   gitLog: GitLogEntry[]
   gitLogLoading: boolean
+  fileDiff: FileDiffResult | null
+  fileDiffLoading: boolean
   sourcePath: string
   destPath: string
 }
@@ -33,7 +35,15 @@ function formatDate(isoDate: string | null): string {
   }
 }
 
-export default function FileDetail({ file, gitLog, gitLogLoading, sourcePath, destPath }: FileDetailProps) {
+export default memo(function FileDetail({
+  file,
+  gitLog,
+  gitLogLoading,
+  fileDiff,
+  fileDiffLoading,
+  sourcePath,
+  destPath,
+}: FileDetailProps) {
   const [activeTab, setActiveTab] = useState<'diff' | 'history'>('diff')
 
   return (
@@ -107,24 +117,24 @@ export default function FileDetail({ file, gitLog, gitLogLoading, sourcePath, de
         </button>
       </div>
 
-      {/* Tab Content */}
+      {/* Tab Content — both rendered, hidden with CSS to avoid remount */}
       <div className="flex-1 overflow-auto">
-        {activeTab === 'diff' ? (
+        <div className={activeTab === 'diff' ? '' : 'hidden'}>
           <DiffViewer
-            sourcePath={sourcePath}
-            destPath={destPath}
-            filePath={file.path}
+            diff={fileDiff}
+            loading={fileDiffLoading}
             fileStatus={file.status}
           />
-        ) : (
+        </div>
+        <div className={activeTab === 'history' ? '' : 'hidden'}>
           <div className="p-4 px-5">
             <h3 className="text-xs text-[#8b949e] uppercase tracking-wider mb-4 font-medium">
               Git 이력 (출발지)
             </h3>
             <GitTimeline entries={gitLog} loading={gitLogLoading} />
           </div>
-        )}
+        </div>
       </div>
     </div>
   )
-}
+})

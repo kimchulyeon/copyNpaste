@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { GitLogEntry } from '../types'
 
 interface GitTimelineProps {
@@ -19,7 +20,7 @@ function formatDate(isoDate: string): string {
   }
 }
 
-export default function GitTimeline({ entries, loading }: GitTimelineProps) {
+export default memo(function GitTimeline({ entries, loading }: GitTimelineProps) {
   if (loading) {
     return (
       <div className="py-8 text-center text-[#484f58] text-sm">
@@ -75,4 +76,4 @@ export default function GitTimeline({ entries, loading }: GitTimelineProps) {
       ))}
     </div>
   )
-}
+})

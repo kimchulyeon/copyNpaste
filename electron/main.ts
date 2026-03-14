@@ -4,7 +4,7 @@ import fs from 'fs'
 import { scanDiff } from './services/diffService'
 import { getGitLog, getBranches, checkoutBranch, gitPull } from './services/gitService'
 import { syncFiles } from './services/syncService'
-import { getProjects, saveProject, deleteProject, updateProjectLastUsed } from './services/storeService'
+import { getProjects, saveProject, deleteProject, updateProjectLastUsed, getWarnPatterns, setWarnPatterns, removeWarnPattern, resetWarnPatterns, getWarnPatternsFlat } from './services/storeService'
 import { getFileDiff } from './services/diffViewService'
 
 let mainWindow: BrowserWindow | null = null
@@ -20,6 +20,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
+    icon: path.join(__dirname, '../../build/icon.png'),
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#0d1117',
     show: false,
@@ -56,7 +57,8 @@ ipcMain.handle('select-folder', async () => {
 })
 
 ipcMain.handle('scan-diff', async (_event, source: string, dest: string) => {
-  return scanDiff(source, dest)
+  const warnPatterns = getWarnPatternsFlat()
+  return scanDiff(source, dest, warnPatterns)
 })
 
 ipcMain.handle('get-git-log', async (_event, repoPath: string, filePath: string) => {
@@ -102,8 +104,41 @@ ipcMain.handle('checkout-branch', async (_event, repoPath: string, branch: strin
   return checkoutBranch(repoPath, branch)
 })
 
-ipcMain.handle('git-pull', async (_event, repoPath: string) => {
-  return gitPull(repoPath)
+ipcMain.handle('git-pull', async (_event, repoPath: string, branch?: string) => {
+  return gitPull(repoPath, branch)
+})
+
+// IPC Handlers — 확인 다이얼로그
+ipcMain.handle('show-confirm', async (_event, title: string, message: string, detail?: string) => {
+  if (!mainWindow) return false
+  const result = await dialog.showMessageBox(mainWindow, {
+    type: 'warning',
+    buttons: ['취소', '덮어쓰기'],
+    defaultId: 0,
+    cancelId: 0,
+    title,
+    message,
+    detail: detail || '',
+  })
+  return result.response === 1
+})
+
+// IPC Handlers — 경고 패턴 관리
+ipcMain.handle('get-warn-patterns', async () => {
+  return getWarnPatterns()
+})
+
+ipcMain.handle('set-warn-patterns', async (_event, patterns: string[]) => {
+  setWarnPatterns(patterns)
+})
+
+ipcMain.handle('remove-warn-pattern', async (_event, pattern: string) => {
+  return removeWarnPattern(pattern)
+})
+
+ipcMain.handle('reset-warn-patterns', async () => {
+  resetWarnPatterns()
+  return getWarnPatterns()
 })
 
 // IPC Handlers — 파일 diff

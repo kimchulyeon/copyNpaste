@@ -1,27 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, memo } from 'react'
 import type { FileDiffResult, DiffHunk } from '../types'
 
 interface DiffViewerProps {
-  sourcePath: string
-  destPath: string
-  filePath: string
+  diff: FileDiffResult | null
+  loading: boolean
   fileStatus: 'modified' | 'new' | 'deleted'
 }
 
-export default function DiffViewer({ sourcePath, destPath, filePath, fileStatus }: DiffViewerProps) {
-  const [diff, setDiff] = useState<FileDiffResult | null>(null)
-  const [loading, setLoading] = useState(true)
+export default memo(function DiffViewer({ diff, loading, fileStatus }: DiffViewerProps) {
   const [viewMode, setViewMode] = useState<'unified' | 'split'>('unified')
-
-  useEffect(() => {
-    setLoading(true)
-    window.electronAPI.getFileDiff(sourcePath, destPath, filePath).then((result) => {
-      setDiff(result)
-      setLoading(false)
-    }).catch(() => {
-      setLoading(false)
-    })
-  }, [sourcePath, destPath, filePath])
 
   if (loading) {
     return (
@@ -87,18 +74,16 @@ export default function DiffViewer({ sourcePath, destPath, filePath, fileStatus 
       </div>
     </div>
   )
-}
+})
 
-function UnifiedDiff({ hunks }: { hunks: DiffHunk[] }) {
+const UnifiedDiff = memo(function UnifiedDiff({ hunks }: { hunks: DiffHunk[] }) {
   return (
     <div>
       {hunks.map((hunk, hi) => (
         <div key={hi}>
-          {/* Hunk header */}
           <div className="px-4 py-1 bg-[#161b22] text-[#8b949e] border-y border-[#21262d] text-[11px]">
             @@ -{hunk.sourceStart},{hunk.sourceLines} +{hunk.destStart},{hunk.destLines} @@
           </div>
-          {/* Lines */}
           {hunk.lines.map((line, li) => (
             <div
               key={li}
@@ -110,14 +95,12 @@ function UnifiedDiff({ hunks }: { hunks: DiffHunk[] }) {
                     : ''
               }`}
             >
-              {/* Line numbers */}
               <span className="w-[50px] shrink-0 text-right pr-2 text-[#484f58] select-none border-r border-[#21262d] py-px">
                 {line.sourceLineNo ?? ''}
               </span>
               <span className="w-[50px] shrink-0 text-right pr-2 text-[#484f58] select-none border-r border-[#21262d] py-px">
                 {line.destLineNo ?? ''}
               </span>
-              {/* Indicator */}
               <span
                 className={`w-[20px] shrink-0 text-center select-none py-px ${
                   line.type === 'add'
@@ -129,7 +112,6 @@ function UnifiedDiff({ hunks }: { hunks: DiffHunk[] }) {
               >
                 {line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' '}
               </span>
-              {/* Content */}
               <pre className="flex-1 py-px pl-1 whitespace-pre-wrap break-all">
                 <code
                   className={
@@ -149,19 +131,17 @@ function UnifiedDiff({ hunks }: { hunks: DiffHunk[] }) {
       ))}
     </div>
   )
-}
+})
 
-function SplitDiff({ hunks }: { hunks: DiffHunk[] }) {
+const SplitDiff = memo(function SplitDiff({ hunks }: { hunks: DiffHunk[] }) {
   return (
     <div>
       {hunks.map((hunk, hi) => (
         <div key={hi}>
-          {/* Hunk header */}
           <div className="px-4 py-1 bg-[#161b22] text-[#8b949e] border-y border-[#21262d] text-[11px]">
             @@ -{hunk.sourceStart},{hunk.sourceLines} +{hunk.destStart},{hunk.destLines} @@
           </div>
           <div className="flex">
-            {/* Source side */}
             <div className="flex-1 border-r border-[#30363d]">
               {hunk.lines
                 .filter((l) => l.type !== 'add')
@@ -188,7 +168,6 @@ function SplitDiff({ hunks }: { hunks: DiffHunk[] }) {
                   </div>
                 ))}
             </div>
-            {/* Dest side */}
             <div className="flex-1">
               {hunk.lines
                 .filter((l) => l.type !== 'remove')
@@ -220,4 +199,4 @@ function SplitDiff({ hunks }: { hunks: DiffHunk[] }) {
       ))}
     </div>
   )
-}
+})
