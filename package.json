@@ -1,6 +1,6 @@
 {
   "name": "copynpaste",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "SI 프로젝트 폴더 동기화 도구",
   "main": "out/main/index.js",
   "scripts": {
